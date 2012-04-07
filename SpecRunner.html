@@ -4,7 +4,8 @@
 <head>
   <title>Jasmine Spec Runner</title>
 
-  <link rel="shortcut icon" type="image/png" href="build/jasmine-1.1.0/jasmine_favicon.png">
+  <link id="shortcut-ok" rel="shortcut icon" type="image/png" href="build/jasmine-1.1.0/jasmine_favicon.png">
+  <link id="shortcut-fail" type="image/png" href="build/jasmine-1.1.0/jasmine_favicon_red.png">
 
   <link rel="stylesheet" type="text/css" href="build/jasmine-1.1.0/jasmine.css">
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
@@ -24,11 +25,18 @@
   <script type="text/javascript">
     $(function() {
       var jasmineEnv = jasmine.getEnv();
-      var htmlReporter = new jasmine.HtmlReporter();
-      jasmineEnv.addReporter(htmlReporter);
+      jasmineEnv.addReporter(new jasmine.HtmlReporter());
+      jasmine.getEnv().addReporter({
+        reportSuiteResults: function(suite) {
+          if (!suite.results().passed()) {
+            $("#shortcut-fail").attr("rel", "shortcut icon");
+            $("#shortcut-ok").attr("rel", "");
+          }
+        }
+      });
       jasmineEnv.execute();
       $.get("/code_change.json", function(data) {
-        document.location = document.location; // reload
+        document.location = document.location.pathname; // reload
       });
     })();
   </script>

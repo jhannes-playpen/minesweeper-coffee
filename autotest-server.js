@@ -1,5 +1,6 @@
 var http = require('http');
 var path = require('path');
+var url = require('url');
 var fs = require('fs');
 var timers = require("timers");
 var coffee = require('./build/coffee-script');
@@ -21,7 +22,7 @@ var contentType = function(filePath) {
 var clients_waiting_for_code_change = [];
 
 var server = http.createServer(function(req,res) {
-  var filePath = '.' + req.url;
+  var filePath = '.' + url.parse(req.url).pathname;
   if (filePath === './') filePath = './SpecRunner.html';
   if (filePath === './code_change.json') {
     clients_waiting_for_code_change.push(res);
@@ -35,7 +36,6 @@ var server = http.createServer(function(req,res) {
           res.writeHead(500);
           res.end();
         } else {
-          console.log("serving " + filePath);
           res.writeHead(200, { 'Content-Type': contentType(filePath) });
           res.end(content, 'utf-8');
         }
@@ -63,7 +63,7 @@ var fileTree = function(root, filenameFilter) {
     if (stat.isFile() && filename.match(filenameFilter)) {
       result[filename] = stat.mtime;
     } else if (stat.isDirectory()) {
-      var subfiles = fileTree(filename);
+      var subfiles = fileTree(filename, filenameFilter);
       for (file in subfiles) {
         result[file] = subfiles[file];
       }
@@ -100,6 +100,10 @@ var compileCoffee = function(coffee_file, status_reporting) {
       fs.writeFileSync(js_file, js_src, "utf8");
     } catch (err) {
       console.log(coffee_file + ": " + err.message);
+      var failed_compile_source = 'describe("' + coffee_file + '", function() {' +
+        'it("fails to compile", function() {' +
+        'expect("' +  err.message.replace('"', "'") + '").toBeUndefined(); }); });';
+      fs.writeFileSync(js_file, failed_compile_source, "utf8");
     }
   });
 }
@@ -114,11 +118,10 @@ var periodicScan = function(files, filenameFilter, listener) {
   };
   var changes = notification.created + notification.deleted + notification.modified;
   if (changes.length > 0) {
-    console.log("changes");
     listener(notification);
-    timers.setTimeout(periodicScan, 10, filenameFilter, newFiles, listener);
+    timers.setTimeout(periodicScan, 10, newFiles, filenameFilter, listener);
   } else {
-    timers.setTimeout(periodicScan, 400, filenameFilter, newFiles, listener);
+    timers.setTimeout(periodicScan, 400, newFiles, filenameFilter, listener);
   }
 };
 

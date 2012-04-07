@@ -21,5 +21,4 @@ Whenever a .coffee file is changed on disk, it will compile the corresponding
 Known issues:
 -------------
 * Occasionally, timing issues when compiling .coffee files may crash the server
-* When tests in CoffeeScript have a syntax error, they are simply excluded from the report, since the .js file is deleted
 
