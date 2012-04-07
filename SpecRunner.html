@@ -7,6 +7,7 @@
   <link rel="shortcut icon" type="image/png" href="build/jasmine-1.1.0/jasmine_favicon.png">
 
   <link rel="stylesheet" type="text/css" href="build/jasmine-1.1.0/jasmine.css">
+  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
   <script type="text/javascript" src="build/jasmine-1.1.0/jasmine.js"></script>
   <script type="text/javascript" src="build/jasmine-1.1.0/jasmine-html.js"></script>
 
@@ -17,16 +18,14 @@
   <script type="text/javascript" src="spec/HelloWorldSpec.js"></script>
 
   <script type="text/javascript">
-    (function() {
+    $(function() {
       var jasmineEnv = jasmine.getEnv();
       var htmlReporter = new jasmine.HtmlReporter();
       jasmineEnv.addReporter(htmlReporter);
-      jasmineEnv.specFilter = function(spec) {
-        return htmlReporter.specFilter(spec);
-      };
-      window.onload = function() {
-        jasmineEnv.execute();
-      };
+      jasmineEnv.execute();
+      $.get("/code_change.json", function(data) {
+        document.location = document.location; // reload
+      });
     })();
   </script>
 
