@@ -2,15 +2,18 @@ var http = require('http');
 var path = require('path');
 var fs = require('fs');
 var timers = require("timers");
+var coffee = require('./build/coffee-script');
 
 var contentType = function(filePath) {
-  if (filePath.match("\.html?$")) {
+  if (filePath.match(/\.html?$/)) {
     return "text/html";
-  } else if (filePath.match("\.css$")) {
+  } else if (filePath.match(/\.css$/)) {
     return "text/css";
-  } else if (filePath.match("\.js$")) {
+  } else if (filePath.match(/\.js$/)) {
     return "text/javascript";
-  } else if (filePath.match("\.png")) {
+  } else if (filePath.match(/\.coffee$/)) {
+    return "text/coffeescript";
+  } else if (filePath.match(/\.png$/)) {
     return "image/png";
   }
 };
@@ -48,7 +51,7 @@ server.listen(10000);
 console.log("Server running at http://localhost:10000");
 
 
-var fileTree = function(root) {
+var fileTree = function(root, filenameFilter) {
   var files = fs.readdirSync(root);
   var result = [];
   for (var i=0; i<files.length; i++) {
@@ -57,7 +60,7 @@ var fileTree = function(root) {
     }
     var filename = root + "/" + files[i];
     var stat = fs.statSync(filename);
-    if (stat.isFile()) {
+    if (stat.isFile() && filename.match(filenameFilter)) {
       result[filename] = stat.mtime;
     } else if (stat.isDirectory()) {
       var subfiles = fileTree(filename);
@@ -86,23 +89,59 @@ var findModified = function(oldFileTree, newFileTree) {
   return result;
 };
 
-var periodicScan = function(files, listener) {
-  var newFiles = fileTree(".");
-  var changes = findMissing(files, newFiles)
-    + findMissing(newFiles, files)
-    + findModified(files, newFiles);
+var compileCoffee = function(coffee_file, status_reporting) {
+  var js_file = coffee_file.replace(/\.coffee$/, ".js")
+  var jsFilePresent = path.existsSync(js_file);
+  if (jsFilePresent && fs.statSync(coffee_file).mtime <= fs.statSync(js_file).mtime) return;
+  console.log("compiling", coffee_file);
+  fs.unlink(js_file, function() {
+    try {
+      var js_src = coffee.CoffeeScript.compile(fs.readFileSync(coffee_file, "utf8"));
+      fs.writeFileSync(js_file, js_src, "utf8");
+    } catch (err) {
+      console.log(coffee_file + ": " + err.message);
+    }
+  });
+}
+
+
+var periodicScan = function(files, filenameFilter, listener) {
+  var newFiles = fileTree(".", filenameFilter);
+  var notification = {
+    created: findMissing(files, newFiles),
+    deleted: findMissing(newFiles, files),
+    modified: findModified(files, newFiles)
+  };
+  var changes = notification.created + notification.deleted + notification.modified;
   if (changes.length > 0) {
-    listener(changes);
-    timers.setTimeout(periodicScan, 10, newFiles, listener);
+    console.log("changes");
+    listener(notification);
+    timers.setTimeout(periodicScan, 10, filenameFilter, newFiles, listener);
   } else {
-    timers.setTimeout(periodicScan, 400, newFiles, listener);
+    timers.setTimeout(periodicScan, 400, filenameFilter, newFiles, listener);
   }
 };
 
-var files = fileTree(".");
-periodicScan(files, function(changes) {
+periodicScan(fileTree(".", /\.js$/), /\.js$/, function(changes) {
   clients_waiting_for_code_change.forEach(function(res) {
     res.writeHead(200);
     res.end();
   });
+  clients_waiting_for_code_change = [];
+});
+
+periodicScan(fileTree(".", /\.coffee$/), /\.coffee$/, function(changes) {
+  changes.created.forEach(function(file) { compileCoffee(file); });
+  changes.modified.forEach(function(file) { compileCoffee(file); });
+  changes.deleted.forEach(function(original) {
+    console.log("Missing " + original);
+    var js_file = original.replace(/\.coffee$/, ".js")
+    console.log("deleting", js_file);
+    fs.unlink(js_file);
+  });
+  clients_waiting_for_code_change.forEach(function(res) {
+    res.writeHead(200);
+    res.end();
+  });
+  clients_waiting_for_code_change = [];
 });
