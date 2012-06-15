@@ -1,0 +1,13 @@
+#minefield table td { border: solid black; height: 1.2em; width: 1.2em; text-align: center; }
+td         { font-weight: bold; font-size: 5em; }
+
+#minefield td.mine     { color: black; }
+#minefield td.triggered { background-color: pink; }
+#minefield td.unexplored { color: #eeeeee; }
+#minefield td.mines-0  { color: white; }
+#minefield td.mines-1  { color: green; }
+#minefield td.mines-2  { color: blue; }
+#minefield td.mines-3  { color: yellow; }
+#minefield td.mines-4  { color: orange; }
+#minefield td.mines-5,#minefield td.mines-6,#minefield td.mines-7,#minefield td.mines-8  { color: red; }
+

@@ -125,7 +125,7 @@ var periodicScan = function(files, filenameFilter, listener) {
   }
 };
 
-periodicScan(fileTree(".", /\.js$/), /\.js$/, function(changes) {
+periodicScan(fileTree(".", /\.(js|html)$/), /\.(js|html)$/, function(changes) {
   clients_waiting_for_code_change.forEach(function(res) {
     res.writeHead(200);
     res.end();
